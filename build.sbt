@@ -6,5 +6,6 @@ ThisBuild / organizationName := "kmltml"
 lazy val root = (project in file("."))
   .settings(
     name := "buns-and-pups",
-    libraryDependencies += "org.scala-lang.modules" %% "scala-swing" % "2.1.1"
+    libraryDependencies += "org.scala-lang.modules" %% "scala-swing" % "2.1.1",
+    run / fork := true
   )

@@ -1,21 +1,79 @@
 package buns
 
 import Cell._
+import scala.util.Random
 
-class Cell(private val bits: Int) extends AnyVal {
+class Cell(val bits: Bits) extends AnyVal {
 
   def state: State = State.forCode(bits & State.Mask)
 
-  def dir: Dir = Dir.forCode(bits & Dir.Mask)
+  def move: Dir = Dir.forCode((bits & MoveMask) >> MoveShift)
+
+  def spawn: Dir = Dir.forCode((bits & SpawnMask) >> SpawnShift)
 
   def hunger: Int = bits >>> HungerShift
+
+  def isEmpty: Boolean = this match {
+    case Empty() => true
+    case _ => false
+  }
+
+  def step(rnd: Random, neighbourhood: Dir => Cell): Cell = this match {
+    case Empty() => Empty()
+    case Obstacle() => Obstacle()
+    case Prey(_) =>
+      val neighbours = Dir.values.map(neighbourhood)
+      if (neighbours.exists {
+        case Predator(_, _, _) => true
+        case _ => false
+      }) Empty()
+      else {
+        val empty = Dir.values.filter(neighbourhood(_).isEmpty)
+        if (empty.nonEmpty) {
+          val spawn = empty(rnd.nextInt(empty.size))
+          val moveCandidates = empty diff Seq(spawn)
+          val move = if(moveCandidates.nonEmpty) moveCandidates(rnd.nextInt(moveCandidates.size)) else Dir.None
+          Prey(move, spawn)
+        } else {
+          Prey(Dir.None, Dir.None)
+        }
+      }
+    case Predator(_, _, 5) => Cell.Empty()
+    case Predator(_, _, hunger) =>
+      val neighbours = Dir.values.map(neighbourhood)
+      val empty = Dir.values.filter(neighbourhood(_).isEmpty)
+      val spawn =
+        if(empty.nonEmpty && hunger == 0) empty(rnd.nextInt(empty.size))
+        else Dir.None
+      if (neighbours.exists {
+        case Prey(_, _) => true
+        case _ => false
+      }) {
+        Predator(Dir.None, spawn, 0)
+      } else {
+        val moveCandidates = empty diff Seq(spawn)
+        val move =
+          if(moveCandidates.nonEmpty) moveCandidates(rnd.nextInt(moveCandidates.size))
+          else Dir.None
+        Predator(move, spawn, hunger + 1)
+      }
+  }
 
 }
 
 object Cell {
 
-  def apply(state: State, direction: Dir, hunger: Int): Cell =
-    new Cell(state.code | direction.code | hunger << HungerShift)
+  type Bits = Int
+
+  def fromBits(bits: Bits): Cell = new Cell(bits)
+
+  def apply(state: State, move: Dir, spawn: Dir, hunger: Int): Cell =
+    new Cell(state.code | move.code << MoveShift | spawn.code << SpawnShift | hunger << HungerShift)
+
+  final val MoveShift = 2
+  final val MoveMask = 0xf << MoveShift
+  final val SpawnShift = 6
+  final val SpawnMask = 0xf << SpawnShift
 
   class State private (val code: Int) extends AnyVal
 
@@ -32,34 +90,16 @@ object Cell {
 
   }
 
-  sealed abstract class Dir(val code: Int, val dx: Int, val dy: Int)
-
-  object Dir {
-    final val Mask = 0x7 << 2
-    case object N extends Dir(0, 0, -1)
-    case object NE extends Dir(1, 1, -1)
-    case object E extends Dir(2, 1, 0)
-    case object SE extends Dir(3, 1, 1)
-    case object S extends Dir(4, 0, 1)
-    case object SW extends Dir(5, -1, 1)
-    case object W extends Dir(6, -1, 0)
-    case object NW extends Dir(7, -1, -1)
-
-    val forCode: Map[Int, Dir] =
-      Seq(N, NE, E, SE, S, SW, W, NW).map(d => d.code -> d).toMap
-
-  }
-
-  final val HungerShift = 5
+  final val HungerShift = 10
 
 
   object Predator {
 
-    def apply(dir: Dir, hunger: Int): Cell =
-      Cell(State.Predator, dir, hunger)
+    def apply(move: Dir, spawn: Dir, hunger: Int): Cell =
+      Cell(State.Predator, move, spawn, hunger)
 
-    def unapply(cell: Cell): Option[(Dir, Int)] = cell.state match {
-      case State.Predator => Some((cell.dir, cell.hunger))
+    def unapply(cell: Cell): Option[(Dir, Dir, Int)] = cell.state match {
+      case State.Predator => Some((cell.move, cell.spawn, cell.hunger))
       case _ => None
     }
 
@@ -67,11 +107,11 @@ object Cell {
 
   object Prey {
 
-    def apply(dir: Dir): Cell =
-      Cell(State.Prey, dir, 0)
+    def apply(move: Dir, spawn: Dir): Cell =
+      Cell(State.Prey, move, spawn, 0)
 
-    def unapply(cell: Cell): Option[Dir] = cell.state match {
-      case State.Prey => Some(cell.dir)
+    def unapply(cell: Cell): Option[(Dir, Dir)] = cell.state match {
+      case State.Prey => Some(cell.move, cell.spawn)
       case _ => None
     }
 
@@ -80,7 +120,7 @@ object Cell {
   object Empty {
 
     def apply(): Cell =
-      Cell(State.Empty, Dir.N, 0)
+      Cell(State.Empty, Dir.None, Dir.None, 0)
 
     def unapply(cell: Cell): Boolean =
       cell.state == State.Empty
@@ -90,7 +130,7 @@ object Cell {
   object Obstacle {
 
     def apply(): Cell =
-      Cell(State.Obstacle, Dir.N, 0)
+      Cell(State.Obstacle, Dir.None, Dir.None, 0)
 
     def unapply(cell: Cell): Boolean =
       cell.state == State.Obstacle
