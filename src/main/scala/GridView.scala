@@ -11,7 +11,7 @@ class GridView(private var _grid: Grid) extends Component {
     case Cell.Empty() => Color.WHITE
     case Cell.Obstacle() => Color.LIGHT_GRAY
     case Cell.Prey(_) => Color.GREEN
-    case Cell.Predator(_, _, _) => Color.RED
+    case Cell.Predator(_, _, hunger) => new Color(255 - hunger * 255 / 15, 0, 0)
   }
 
   override def paintComponent(g: Graphics2D): Unit = {
