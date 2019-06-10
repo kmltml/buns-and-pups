@@ -5,7 +5,7 @@ import java.awt.Color
 
 class GridView(private var _grid: Grid) extends Component {
 
-  preferredSize = new Dimension(100, 100)
+  preferredSize = new Dimension(_grid.size * 2, _grid.size * 2)
 
   private def cellColor(cell: Cell): Color = cell match {
     case Cell.Empty() => Color.WHITE
