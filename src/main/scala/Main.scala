@@ -1,11 +1,14 @@
 package buns
 
-import scala.swing._
+import scala.swing._, scala.swing.event._
 import java.{util => ju}
+import scala.swing.event.EditDone
+import scala.util.Try
+import scala.swing.event.ValueChanged
 
 object Main extends SwingApplication {
 
-  val grid = new Grid(500, torus = true)
+  val grid = new Grid(100, torus = true)
 
   val runTimer = new ju.Timer()
   def newRunTask = new ju.TimerTask {
@@ -71,7 +74,6 @@ object Main extends SwingApplication {
       }
 
       val randomisation = new GridBagPanel {
-
         val emptyWeight = new Slider {
           min = 0
           max = 100
@@ -113,8 +115,33 @@ object Main extends SwingApplication {
         }
       }
 
+      val gridControls = new BoxPanel(Orientation.Horizontal) {
+        contents += new Label("Grid size:")
+        contents += new TextField(grid.size.toString, 4) {
+          maximumSize = new Dimension(maximumSize.width, preferredSize.height)
+          reactions += {
+            case ValueChanged(_) =>
+              Try(text.toInt)
+                .filter(s => s > 0 && s <= 1000)
+                .foreach { s =>
+                  grid.size = s
+                  gridView.repaint()
+                }
+            case e => println(e)
+          }
+        }
+        contents += new CheckBox("toroidal") {
+          selected = grid.torus
+          reactions += {
+            case ButtonClicked(_) =>
+              grid.torus = selected
+          }
+        }
+      }
+
       contents += stepControl
       contents += randomisation
+      contents += gridControls
     }
 
     contents = new BorderPanel {

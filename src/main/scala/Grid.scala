@@ -1,13 +1,27 @@
 package buns
 import scala.util.Random
 
-class Grid(val size: Int, val torus: Boolean) {
+class Grid(private var _size: Int, var torus: Boolean) {
 
   private var currentCells: Array[Cell.Bits] =
     Array.fill(size * size)(Cell.Empty().bits)
 
   private var nextCells: Array[Cell.Bits] =
     Array.fill(size * size)(Cell.Empty().bits)
+
+  def size = _size
+  def size_=(s: Int): Unit = synchronized {
+    def resize(arr: Array[Cell.Bits]) = {
+      val ret = Array.fill(s * s)(Cell.Empty().bits)
+      for (y <- 0 until (s min size)) {
+        java.lang.System.arraycopy(arr, y * size, ret, y * s, s min size)
+      }
+      ret
+    }
+    currentCells = resize(currentCells)
+    nextCells = resize(nextCells)
+    _size = s
+  }
 
   def randomize(emptyw: Double, obstaclew: Double, predatorw: Double, preyw: Double): Unit = {
     val weights = Seq(emptyw, obstaclew, predatorw, preyw)
@@ -39,6 +53,16 @@ class Grid(val size: Int, val torus: Boolean) {
         Cell.fromBits(currentCells(y * size + x))
     }
 
+  def next(x: Int, y: Int): Cell =
+    if(torus) {
+      Cell.fromBits(nextCells(wrap(y) * size + wrap(x)))
+    } else {
+      if (x < 0 || x >= size || y < 0 || y >= size)
+        Cell.Obstacle()
+      else
+        Cell.fromBits(nextCells(y * size + x))
+    }
+
   def update(x: Int, y: Int, c: Cell): Unit = {
     if (torus) {
       nextCells(wrap(y) * size + wrap(x)) = c.bits
@@ -52,21 +76,24 @@ class Grid(val size: Int, val torus: Boolean) {
   def neighbourhood(x: Int, y: Int)(dir: Dir): Cell =
     apply(x + dir.dx, y + dir.dy)
 
+  def nextNeighbourhood(x: Int, y: Int)(dir: Dir): Cell =
+    next(x + dir.dx, y + dir.dy)
+
   def step(): Unit = {
     val rand = new Random
     for {
-      x <- (0 until size).par
-      y <- 0 until size
+      y <- (0 until size).par
+      x <- 0 until size
     } {
-      this(x, y) = this(x, y).step(rand, neighbourhood(x, y)).bits
+      this(x, y) = this(x, y).step(rand, neighbourhood(x, y))
     }
 
     for {
       x <- 0 until size
       y <- 0 until size
-      if this(x, y).isEmpty
+      if next(x, y).isEmpty
     } {
-      val n = neighbourhood(x, y) _
+      val n = nextNeighbourhood(x, y) _
       val neighbours = Dir.values.map(d => (d, n(d)))
       val spawn = neighbours.collectFirst {
         case (d, Cell.Predator(_, s, _)) if s == -d =>
