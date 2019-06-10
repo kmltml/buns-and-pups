@@ -9,13 +9,17 @@ class Grid(val size: Int, val torus: Boolean) {
   private var nextCells: Array[Cell.Bits] =
     Array.fill(size * size)(Cell.Empty().bits)
 
-  def randomize(): Unit = {
+  def randomize(emptyw: Double, obstaclew: Double, predatorw: Double, preyw: Double): Unit = {
+    val weights = Seq(emptyw, obstaclew, predatorw, preyw)
+    val weightSum = weights.sum
+    val accumWeights = weights.scan(0.0)(_ + _).tail.map(_ / weightSum)
     currentCells = Array.fill(size * size) {
-      (scala.util.Random.nextInt(10) match {
-        case 1 => Cell.Prey(Dir.None, Dir.None)
+      val r = util.Random.nextDouble()
+      (accumWeights.indexWhere(r < _) match {
+        case 0 => Cell.Empty()
+        case 1 => Cell.Obstacle()
         case 2 => Cell.Predator(Dir.None, Dir.None, 0)
-        case _ => Cell.Empty()
-        // case 3 => Cell.Obstacle()
+        case 3 => Cell.Prey(Dir.None, Dir.None)
       }).bits
     }
   }
@@ -54,8 +58,7 @@ class Grid(val size: Int, val torus: Boolean) {
       x <- (0 until size).par
       y <- 0 until size
     } {
-      nextCells(x + y * size) =
-        this(x, y).step(rand, neighbourhood(x, y)).bits
+      this(x, y) = this(x, y).step(rand, neighbourhood(x, y)).bits
     }
 
     for {
