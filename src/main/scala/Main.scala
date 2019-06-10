@@ -5,7 +5,7 @@ import java.{util => ju}
 
 object Main extends SwingApplication {
 
-  val grid = new Grid(300)
+  val grid = new Grid(300, torus = true)
   grid.randomize()
 
   val runTimer = new ju.Timer()

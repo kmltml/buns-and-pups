@@ -1,7 +1,7 @@
 package buns
 import scala.util.Random
 
-class Grid(val size: Int) {
+class Grid(val size: Int, val torus: Boolean) {
 
   private var currentCells: Array[Cell.Bits] =
     Array.fill(size * size)(Cell.Empty().bits)
@@ -20,15 +20,28 @@ class Grid(val size: Int) {
     }
   }
 
+  private def wrap(x: Int): Int =
+    if(x < 0) wrap(x + size)
+    else if(x >= size) wrap(x - size)
+    else x
+
   def apply(x: Int, y: Int): Cell =
-    if (x < 0 || x >= size || y < 0 || y >= size)
-      Cell.Obstacle()
-    else
-      Cell.fromBits(currentCells(y * size + x))
+    if(torus) {
+      Cell.fromBits(currentCells(wrap(y) * size + wrap(x)))
+    } else {
+      if (x < 0 || x >= size || y < 0 || y >= size)
+        Cell.Obstacle()
+      else
+        Cell.fromBits(currentCells(y * size + x))
+    }
 
   def update(x: Int, y: Int, c: Cell): Unit = {
-    if (x >= 0 && x < size && y >= 0 && y < size) {
-      nextCells(y * size + x) = c.bits
+    if (torus) {
+      nextCells(wrap(y) * size + wrap(x)) = c.bits
+    } else {
+      if (x >= 0 && x < size && y >= 0 && y < size) {
+        nextCells(y * size + x) = c.bits
+      }
     }
   }
 
