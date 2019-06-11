@@ -79,13 +79,13 @@ class Grid(private var _size: Int, var torus: Boolean) {
   def nextNeighbourhood(x: Int, y: Int)(dir: Dir): Cell =
     next(x + dir.dx, y + dir.dy)
 
-  def step(): Unit = {
+  def step(props: Props): Unit = {
     val rand = new Random
     for {
       y <- (0 until size).par
       x <- 0 until size
     } {
-      this(x, y) = this(x, y).step(rand, neighbourhood(x, y))
+      this(x, y) = this(x, y).step(props, rand, neighbourhood(x, y))
     }
 
     for {
@@ -97,7 +97,7 @@ class Grid(private var _size: Int, var torus: Boolean) {
       val neighbours = Dir.values.map(d => (d, n(d)))
       val spawn = neighbours.collectFirst {
         case (d, Cell.Predator(_, s, _)) if s == -d =>
-          Cell.Predator(Dir.None, Dir.None, 1)
+          Cell.Predator(Dir.None, Dir.None, (props.predSpawnMaxHunger + 1) min props.predMaxHunger)
         case (d, Cell.Prey(_, s)) if s == -d =>
           Cell.Prey(Dir.None, Dir.None)
       }

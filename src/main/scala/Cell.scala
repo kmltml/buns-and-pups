@@ -18,34 +18,41 @@ class Cell(val bits: Bits) extends AnyVal {
     case _ => false
   }
 
-  def step(rnd: Random, neighbourhood: Dir => Cell): Cell = this match {
+  def step(props: Props, rnd: Random, neighbourhood: Dir => Cell): Cell = this match {
     case Empty() => Empty()
     case Obstacle() => Obstacle()
     case Prey(_) =>
       val neighbours = Dir.values.map(neighbourhood)
       if (neighbours.exists {
-        case Predator(_, _, _) => true
+        case Predator(_, _, hunger) if hunger >= props.predEatMinHunger => true
         case _ => false
       }) Empty()
       else {
         val empty = Dir.values.filter(neighbourhood(_).isEmpty)
         if (empty.nonEmpty) {
-          val spawn = empty(rnd.nextInt(empty.size))
+          val spawn =
+            if(rnd.nextDouble() <= props.preySpawnChance)
+              empty(rnd.nextInt(empty.size))
+            else Dir.None
           val moveCandidates = empty diff Seq(spawn)
-          val move = if(moveCandidates.nonEmpty) moveCandidates(rnd.nextInt(moveCandidates.size)) else Dir.None
+          val move =
+            if(moveCandidates.nonEmpty)
+              moveCandidates(rnd.nextInt(moveCandidates.size))
+            else Dir.None
           Prey(move, spawn)
         } else {
           Prey(Dir.None, Dir.None)
         }
       }
-    case Predator(_, _, 5) => Cell.Empty()
+    case Predator(_, _, hunger) if hunger > props.predMaxHunger => Cell.Empty()
     case Predator(_, _, hunger) =>
       val neighbours = Dir.values.map(neighbourhood)
       val empty = Dir.values.filter(neighbourhood(_).isEmpty)
       val spawn =
-        if(empty.nonEmpty && hunger == 0) empty(rnd.nextInt(empty.size))
+        if(empty.nonEmpty && hunger <= props.predSpawnMaxHunger && rnd.nextDouble() <= props.predSpawnChance)
+          empty(rnd.nextInt(empty.size))
         else Dir.None
-      if (neighbours.exists {
+      if (hunger >= props.predEatMinHunger && neighbours.exists {
         case Prey(_, _) => true
         case _ => false
       }) {

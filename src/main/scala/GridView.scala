@@ -3,24 +3,25 @@ package buns
 import scala.swing._
 import java.awt.Color
 
-class GridView(private var _grid: Grid) extends Component {
+class GridView(val grid: Grid, var props: Props) extends Component {
 
-  preferredSize = new Dimension(_grid.size * 2, _grid.size * 2)
+  preferredSize = new Dimension(grid.size * 4, grid.size * 4)
 
   private def cellColor(cell: Cell): Color = cell match {
     case Cell.Empty() => Color.WHITE
     case Cell.Obstacle() => Color.LIGHT_GRAY
     case Cell.Prey(_) => Color.GREEN
-    case Cell.Predator(_, _, hunger) => new Color(255 - hunger * 255 / 15, 0, 0)
+    case Cell.Predator(_, _, hunger) =>
+      new Color(255 - hunger * 155 / (props.predMaxHunger * 3 / 2), 0, 0)
   }
 
   override def paintComponent(g: Graphics2D): Unit = {
-    val cellSize = (size.width min size.height) / _grid.size
+    val cellSize = (size.width min size.height) / grid.size
     for {
-      x <- 0 until _grid.size
-      y <- 0 until _grid.size
+      x <- 0 until grid.size
+      y <- 0 until grid.size
     } {
-      g.setColor(cellColor(_grid(x, y)))
+      g.setColor(cellColor(grid(x, y)))
       g.fillRect(x * cellSize, y * cellSize, cellSize, cellSize)
     }
   }
