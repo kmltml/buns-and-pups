@@ -25,9 +25,11 @@ object Main extends SwingApplication {
   }
 
   val gridView = new GridView(grid)
+  val graphView = new GraphView()
 
   def step(): Unit = {
     grid.step()
+    graphView += grid.population
     gridView.repaint()
   }
 
@@ -144,9 +146,11 @@ object Main extends SwingApplication {
       contents += gridControls
     }
 
+    val splitPanel = new SplitPane(Orientation.Horizontal, gridView, graphView)
+
     contents = new BorderPanel {
       import BorderPanel.Position._
-      layout(gridView) = Center
+      layout(splitPanel) = Center
       layout(controlPanel) = East
     }
 

@@ -124,4 +124,17 @@ class Grid(private var _size: Int, var torus: Boolean) {
     currentCells = nextCells
   }
 
+  def population: Population = {
+    val pred = currentCells.count(bits => Cell.fromBits(bits) match {
+      case Cell.Predator(_, _, _) => true
+      case _ => false
+    })
+    val prey = currentCells.count(bits => Cell.fromBits(bits) match {
+      case Cell.Prey(_, _) => true
+      case _ => false
+    })
+    val cells = size * size
+    Population(pred.toDouble / cells, prey.toDouble / cells)
+  }
+
 }
